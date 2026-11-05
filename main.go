@@ -77,9 +77,108 @@ func GetStreams(c *J.ClientWithResponses, g *prometheus.GaugeVec) {
 	}
 }
 
+func GetMovies(c *J.ClientWithResponses) (movies []J.BaseItemDto, err error) {
+	const pageSize = 100
+	items := []J.BaseItemKind{J.BaseItemKindMovie}
+	sortBy := []J.ItemSortBy{J.ItemSortBySortName}
+	recursive := true
+	images := false
+
+	for page := 0; ; {
+		var idx, limit int32
+		idx = int32(page)
+		limit = int32(pageSize)
+		resp, err := c.GetItemsWithResponse(ctx, &J.GetItemsParams{
+			IncludeItemTypes: &items,
+			Recursive:        &recursive,
+			SortBy:           &sortBy,
+			EnableImages:     &images,
+			StartIndex:       &idx,
+			Limit:            &limit,
+		})
+
+		if err != nil {
+			return nil, err
+		}
+		movies = append(movies, resp.JSON200.Items...)
+		page += len(resp.JSON200.Items)
+
+		if len(resp.JSON200.Items) == 0 || page >= int(resp.JSON200.TotalRecordCount) {
+			return movies, nil
+		}
+	}
+}
+
+func GetShows(c *J.ClientWithResponses) (shows []J.BaseItemDto, err error) {
+	const pageSize = 100
+	items := []J.BaseItemKind{J.BaseItemKindSeries}
+	sortBy := []J.ItemSortBy{J.ItemSortBySortName}
+	recursive := true
+	images := false
+
+	for page := 0; ; {
+		var idx, limit int32
+		idx = int32(page)
+		limit = int32(pageSize)
+		resp, err := c.GetItemsWithResponse(ctx, &J.GetItemsParams{
+			IncludeItemTypes: &items,
+			Recursive:        &recursive,
+			SortBy:           &sortBy,
+			EnableImages:     &images,
+			StartIndex:       &idx,
+			Limit:            &limit,
+		})
+
+		if err != nil {
+			return nil, err
+		}
+		shows = append(shows, resp.JSON200.Items...)
+		page += len(resp.JSON200.Items)
+
+		if len(resp.JSON200.Items) == 0 || page >= int(resp.JSON200.TotalRecordCount) {
+			return shows, nil
+		}
+	}
+}
+
+func GetMusicAlbums(c *J.ClientWithResponses) (albums []J.BaseItemDto, err error) {
+	const pageSize = 100
+	items := []J.BaseItemKind{J.BaseItemKindMusicAlbum}
+	sortBy := []J.ItemSortBy{J.ItemSortBySortName}
+	recursive := true
+	images := false
+
+	for page := 0; ; {
+		var idx, limit int32
+		idx = int32(page)
+		limit = int32(pageSize)
+		resp, err := c.GetItemsWithResponse(ctx, &J.GetItemsParams{
+			IncludeItemTypes: &items,
+			Recursive:        &recursive,
+			SortBy:           &sortBy,
+			EnableImages:     &images,
+			StartIndex:       &idx,
+			Limit:            &limit,
+		})
+
+		if err != nil {
+			return nil, err
+		}
+		albums = append(albums, resp.JSON200.Items...)
+		page += len(resp.JSON200.Items)
+
+		if len(resp.JSON200.Items) == 0 || page >= int(resp.JSON200.TotalRecordCount) {
+			return albums, nil
+		}
+	}
+}
+
 type Metrics struct {
 	ActiveSessions prometheus.Counter
 	ActiveStreams  *prometheus.GaugeVec
+	NumberOfMovies prometheus.Counter
+	NumberOfShows  prometheus.Counter
+	NumberOfAlbums prometheus.Counter
 }
 
 func register(reg prometheus.Registerer, m *Metrics, apiKey, host string) {
@@ -108,9 +207,47 @@ func register(reg prometheus.Registerer, m *Metrics, apiKey, host string) {
 		Name: "jellyfin_now_playing",
 		Help: "now playing",
 	}, []string{"user", "media_type", "now_playing"})
+
+	promauto.With(reg).NewCounterFunc(prometheus.CounterOpts{
+		Name: "number_of_movies",
+		Help: "total number of movies",
+	}, func() float64 {
+		movies, err := GetMovies(newClient)
+		if err != nil {
+			log.Warn(err.Error())
+			return 0
+		}
+		return float64(len(movies))
+	})
+
+	promauto.With(reg).NewCounterFunc(prometheus.CounterOpts{
+		Name: "number_of_shows",
+		Help: "total number of shows",
+	}, func() float64 {
+		shows, err := GetShows(newClient)
+		if err != nil {
+			log.Warn(err.Error())
+			return 0
+		}
+		return float64(len(shows))
+	})
+
+	promauto.With(reg).NewCounterFunc(prometheus.CounterOpts{
+		Name: "number_of_albums",
+		Help: "total number of music albums",
+	}, func() float64 {
+		albums, err := GetMusicAlbums(newClient)
+		if err != nil {
+			log.Warn(err.Error())
+			return 0
+		}
+		return float64(len(albums))
+	})
+
 	go func() {
 		for {
 			GetStreams(newClient, streams)
+
 			time.Sleep(15 * time.Second)
 		}
 	}()
