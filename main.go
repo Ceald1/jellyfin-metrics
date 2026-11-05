@@ -23,6 +23,8 @@ var (
 	ctx = context.Background()
 )
 
+const pageSize = 100
+
 func withToken(token string) J.RequestEditorFn {
 	return func(ctx context.Context, req *http.Request) error {
 		req.Header.Set("Authorization", fmt.Sprintf(`MediaBrowser Token="%s"`, token))
@@ -77,9 +79,7 @@ func GetStreams(c *J.ClientWithResponses, g *prometheus.GaugeVec) {
 	}
 }
 
-func GetMovies(c *J.ClientWithResponses) (movies []J.BaseItemDto, err error) {
-	const pageSize = 100
-	items := []J.BaseItemKind{J.BaseItemKindMovie}
+func GetItems(c *J.ClientWithResponses, items []J.BaseItemKind) (itemsResult []J.BaseItemDto, err error) {
 	sortBy := []J.ItemSortBy{J.ItemSortBySortName}
 	recursive := true
 	images := false
@@ -100,77 +100,13 @@ func GetMovies(c *J.ClientWithResponses) (movies []J.BaseItemDto, err error) {
 		if err != nil {
 			return nil, err
 		}
-		movies = append(movies, resp.JSON200.Items...)
+		itemsResult = append(itemsResult, resp.JSON200.Items...)
 		page += len(resp.JSON200.Items)
-
 		if len(resp.JSON200.Items) == 0 || page >= int(resp.JSON200.TotalRecordCount) {
-			return movies, nil
+			return itemsResult, nil
 		}
 	}
-}
 
-func GetShows(c *J.ClientWithResponses) (shows []J.BaseItemDto, err error) {
-	const pageSize = 100
-	items := []J.BaseItemKind{J.BaseItemKindSeries}
-	sortBy := []J.ItemSortBy{J.ItemSortBySortName}
-	recursive := true
-	images := false
-
-	for page := 0; ; {
-		var idx, limit int32
-		idx = int32(page)
-		limit = int32(pageSize)
-		resp, err := c.GetItemsWithResponse(ctx, &J.GetItemsParams{
-			IncludeItemTypes: &items,
-			Recursive:        &recursive,
-			SortBy:           &sortBy,
-			EnableImages:     &images,
-			StartIndex:       &idx,
-			Limit:            &limit,
-		})
-
-		if err != nil {
-			return nil, err
-		}
-		shows = append(shows, resp.JSON200.Items...)
-		page += len(resp.JSON200.Items)
-
-		if len(resp.JSON200.Items) == 0 || page >= int(resp.JSON200.TotalRecordCount) {
-			return shows, nil
-		}
-	}
-}
-
-func GetMusicAlbums(c *J.ClientWithResponses) (albums []J.BaseItemDto, err error) {
-	const pageSize = 100
-	items := []J.BaseItemKind{J.BaseItemKindMusicAlbum}
-	sortBy := []J.ItemSortBy{J.ItemSortBySortName}
-	recursive := true
-	images := false
-
-	for page := 0; ; {
-		var idx, limit int32
-		idx = int32(page)
-		limit = int32(pageSize)
-		resp, err := c.GetItemsWithResponse(ctx, &J.GetItemsParams{
-			IncludeItemTypes: &items,
-			Recursive:        &recursive,
-			SortBy:           &sortBy,
-			EnableImages:     &images,
-			StartIndex:       &idx,
-			Limit:            &limit,
-		})
-
-		if err != nil {
-			return nil, err
-		}
-		albums = append(albums, resp.JSON200.Items...)
-		page += len(resp.JSON200.Items)
-
-		if len(resp.JSON200.Items) == 0 || page >= int(resp.JSON200.TotalRecordCount) {
-			return albums, nil
-		}
-	}
 }
 
 type Metrics struct {
@@ -212,7 +148,8 @@ func register(reg prometheus.Registerer, m *Metrics, apiKey, host string) {
 		Name: "number_of_movies",
 		Help: "total number of movies",
 	}, func() float64 {
-		movies, err := GetMovies(newClient)
+		items := []J.BaseItemKind{J.BaseItemKindMovie}
+		movies, err := GetItems(newClient, items)
 		if err != nil {
 			log.Warn(err.Error())
 			return 0
@@ -224,7 +161,8 @@ func register(reg prometheus.Registerer, m *Metrics, apiKey, host string) {
 		Name: "number_of_shows",
 		Help: "total number of shows",
 	}, func() float64 {
-		shows, err := GetShows(newClient)
+		items := []J.BaseItemKind{J.BaseItemKindSeries}
+		shows, err := GetItems(newClient, items)
 		if err != nil {
 			log.Warn(err.Error())
 			return 0
@@ -233,10 +171,11 @@ func register(reg prometheus.Registerer, m *Metrics, apiKey, host string) {
 	})
 
 	promauto.With(reg).NewCounterFunc(prometheus.CounterOpts{
-		Name: "number_of_albums",
+		Name: "number_of_music_albums",
 		Help: "total number of music albums",
 	}, func() float64 {
-		albums, err := GetMusicAlbums(newClient)
+		items := []J.BaseItemKind{J.BaseItemKindMusicAlbum}
+		albums, err := GetItems(newClient, items)
 		if err != nil {
 			log.Warn(err.Error())
 			return 0
