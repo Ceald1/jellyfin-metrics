@@ -1,0 +1,8 @@
+package: api
+output: api/client.gen.go
+generate:
+  models: true          # Generates Go structs for your payloads
+  client: true          # Generates the HTTP client methods
+output-options:
+  overlay:
+    path: overlay.yaml

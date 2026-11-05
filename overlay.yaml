@@ -1,0 +1,16 @@
+overlay: 1.0.0
+x-speakeasy-jsonpath: rfc9535
+info:
+  title: Generate plain values instead of pointers
+  version: 1.0.0
+actions:
+  - target: $.components.schemas.*.properties[?(@.type=='string')]
+    update: {x-go-type-skip-optional-pointer: true}
+  - target: $.components.schemas.*.properties[?(@.type=='boolean')]
+    update: {x-go-type-skip-optional-pointer: true}
+  - target: $.components.schemas.*.properties[?(@.type=='integer')]
+    update: {x-go-type-skip-optional-pointer: true}
+  - target: $.components.schemas.*.properties[?(@.type=='number')]
+    update: {x-go-type-skip-optional-pointer: true}
+  - target: $.components.schemas.*.properties[?(@.type=='array')]
+    update: {x-go-type-skip-optional-pointer: true}
