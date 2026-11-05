@@ -100,9 +100,15 @@ func GetItems(c *J.ClientWithResponses, items []J.BaseItemKind) (itemsResult []J
 		if err != nil {
 			return nil, err
 		}
-		itemsResult = append(itemsResult, resp.JSON200.Items...)
-		page += len(resp.JSON200.Items)
-		if len(resp.JSON200.Items) == 0 || page >= int(resp.JSON200.TotalRecordCount) {
+		var item J.BaseItemDtoQueryResult
+
+		err = json.Unmarshal(resp.Body, &item)
+		if err != nil {
+			return nil, err
+		}
+		itemsResult = append(itemsResult, item.Items...)
+		page += len(item.Items)
+		if len(item.Items) == 0 || page >= int(item.TotalRecordCount) {
 			return itemsResult, nil
 		}
 	}
