@@ -116,11 +116,20 @@ func GetItems(c *J.ClientWithResponses, items []J.BaseItemKind) (itemsResult []J
 }
 
 type Metrics struct {
-	ActiveSessions prometheus.Counter
-	ActiveStreams  *prometheus.GaugeVec
-	NumberOfMovies prometheus.Counter
-	NumberOfShows  prometheus.Counter
-	NumberOfAlbums prometheus.Counter
+	ActiveSessions           prometheus.Counter
+	ActiveStreams            *prometheus.GaugeVec
+	NumberOfMovies           prometheus.Counter
+	NumberOfShows            prometheus.Counter
+	NumberOfMusicAlbums      prometheus.Counter
+	NumberOfMusicArtists     prometheus.Counter
+	NumberOfMovieCollections prometheus.Counter
+}
+
+func runtime(item J.BaseItemDto) time.Duration {
+	if item.RunTimeTicks == nil {
+		return 0
+	}
+	return time.Duration(*item.RunTimeTicks) * 100 * time.Nanosecond
 }
 
 func register(reg prometheus.Registerer, m *Metrics, apiKey, host string) {
@@ -187,6 +196,46 @@ func register(reg prometheus.Registerer, m *Metrics, apiKey, host string) {
 			return 0
 		}
 		return float64(len(albums))
+	})
+	promauto.With(reg).NewCounterFunc(prometheus.CounterOpts{
+		Name: "number_of_music_artists",
+		Help: "total number of music artists",
+	}, func() float64 {
+		items := []J.BaseItemKind{J.BaseItemKindMusicArtist}
+		artists, err := GetItems(newClient, items)
+		if err != nil {
+			log.Warn(err.Error())
+			return 0
+		}
+		return float64(len(artists))
+	})
+	promauto.With(reg).NewCounterFunc(prometheus.CounterOpts{
+		Name: "number_of_movie_collections",
+		Help: "number of movie collections",
+	}, func() float64 {
+		items := []J.BaseItemKind{J.BaseItemKindCollectionFolder}
+		collections, err := GetItems(newClient, items)
+		if err != nil {
+			log.Warn(err.Error())
+			return 0
+		}
+		return float64(len(collections))
+	})
+	promauto.With(reg).NewCounterFunc(prometheus.CounterOpts{
+		Name: "number_of_movie_hours",
+		Help: "total number of hours for movies",
+	}, func() float64 {
+		items := []J.BaseItemKind{J.BaseItemKindMovie}
+		movies, err := GetItems(newClient, items)
+		if err != nil {
+			log.Warn(err.Error())
+			return 0
+		}
+		totalHours := 0.0
+		for _, movie := range movies {
+			totalHours = totalHours + runtime(movie).Minutes()
+		}
+		return totalHours
 	})
 
 	go func() {
