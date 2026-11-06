@@ -126,10 +126,10 @@ type Metrics struct {
 }
 
 func runtime(item J.BaseItemDto) time.Duration {
-	if item.RunTimeTicks == nil {
+	if item.RunTimeTicks == 0 {
 		return 0
 	}
-	return time.Duration(*item.RunTimeTicks) * 100 * time.Nanosecond
+	return time.Duration(item.RunTimeTicks) * 100 * time.Nanosecond
 }
 
 func register(reg prometheus.Registerer, m *Metrics, apiKey, host string) {
