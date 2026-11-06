@@ -1,17 +1,28 @@
-
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: jellyfin-metrics
-  namespace: monitoring
-  labels:
-    release: ""
 spec:
   selector:
     matchLabels:
-      app: jellyfin-metrics
+      app.kubernetes.io/name: jellyfin-metrics
   endpoints:
   - port: metrics
     path: /metrics
-    interval: 30s
-    scrapeTimeout: 20s
+    interval: 10s
+    scrapeTimeout: 9s
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyfin-metrics
+
+  labels:
+    app.kubernetes.io/name: jellyfin-metrics
+spec:
+  selector:
+    app: jellyfin-metrics        
+  ports:
+  - name: metrics
+    port: 2112
+    targetPort: 2112
