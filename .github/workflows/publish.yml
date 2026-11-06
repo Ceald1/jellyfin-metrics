@@ -6,7 +6,7 @@ on:
     branches: ["main"]
 
 jobs:
-  build-and-push-bpf:
+  build-and-push:
     runs-on: ubuntu-latest
 
     # Required permissions to write packages and read repository content
