@@ -237,6 +237,38 @@ func register(reg prometheus.Registerer, m *Metrics, apiKey, host string) {
 		}
 		return totalHours
 	})
+	promauto.With(reg).NewCounterFunc(prometheus.CounterOpts{
+		Name: "number_of_show_hours",
+		Help: "total number of hours for shows",
+	}, func() float64 {
+		items := []J.BaseItemKind{J.BaseItemKindSeries}
+		shows, err := GetItems(newClient, items)
+		if err != nil {
+			log.Warn(err.Error())
+			return 0
+		}
+		totalHours := 0.0
+		for _, show := range shows {
+			totalHours = totalHours + runtime(show).Minutes()
+		}
+		return totalHours
+	})
+	promauto.With(reg).NewCounterFunc(prometheus.CounterOpts{
+		Name: "number_of_music_hours",
+		Help: "total number of hours for music",
+	}, func() float64 {
+		items := []J.BaseItemKind{J.BaseItemKindAudio}
+		songs, err := GetItems(newClient, items)
+		if err != nil {
+			log.Warn(err.Error())
+			return 0
+		}
+		totalHours := 0.0
+		for _, song := range songs {
+			totalHours = totalHours + runtime(song).Minutes()
+		}
+		return totalHours
+	})
 
 	go func() {
 		for {

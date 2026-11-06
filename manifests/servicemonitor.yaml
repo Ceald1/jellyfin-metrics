@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  annotations: {}
+  generation: 1
+  labels: {}
+  name: jellyfin-metrics
+  namespace: monitoring
+spec:
+  endpoints:
+  - interval: 30s
+    port: 2112
+  selector:
+    matchLabels:
+      app: jellyfin-metrics
