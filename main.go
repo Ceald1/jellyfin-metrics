@@ -88,13 +88,15 @@ func GetItems(c *J.ClientWithResponses, items []J.BaseItemKind) (itemsResult []J
 		var idx, limit int32
 		idx = int32(page)
 		limit = int32(pageSize)
+		collapse := false
 		resp, err := c.GetItemsWithResponse(ctx, &J.GetItemsParams{
-			IncludeItemTypes: &items,
-			Recursive:        &recursive,
-			SortBy:           &sortBy,
-			EnableImages:     &images,
-			StartIndex:       &idx,
-			Limit:            &limit,
+			IncludeItemTypes:    &items,
+			Recursive:           &recursive,
+			SortBy:              &sortBy,
+			EnableImages:        &images,
+			StartIndex:          &idx,
+			Limit:               &limit,
+			CollapseBoxSetItems: &collapse,
 		})
 
 		if err != nil {
@@ -169,7 +171,12 @@ func register(reg prometheus.Registerer, m *Metrics, apiKey, host string) {
 			log.Warn(err.Error())
 			return 0
 		}
-		return float64(len(movies))
+		var numMovies float64
+		for _, _ = range movies {
+			numMovies++
+
+		}
+		return numMovies
 	})
 
 	promauto.With(reg).NewCounterFunc(prometheus.CounterOpts{
