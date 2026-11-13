@@ -117,6 +117,24 @@ func GetItems(c *J.ClientWithResponses, items []J.BaseItemKind) (itemsResult []J
 
 }
 
+func GetUsers(c *J.ClientWithResponses) (result []string, err error) {
+	resp, err := c.GetUsersWithResponse(ctx, &J.GetUsersParams{})
+	if err != nil {
+		return
+	}
+	var users []J.UserDto
+	err = json.Unmarshal(resp.Body, &users)
+	if err != nil {
+		return
+	}
+	for _, user := range users {
+		result = append(result, user.Name)
+	}
+
+	return
+
+}
+
 type Metrics struct {
 	ActiveSessions           prometheus.Counter
 	ActiveStreams            *prometheus.GaugeVec
@@ -272,9 +290,90 @@ func register(reg prometheus.Registerer, m *Metrics, apiKey, host string) {
 		}
 		totalHours := 0.0
 		for _, song := range songs {
-			totalHours = totalHours + runtime(song).Minutes()
+			totalHours = totalHours + runtime(song).Hours()
 		}
 		return totalHours
+	})
+	promauto.With(reg).NewCounterFunc(prometheus.CounterOpts{
+		Name: "number_of_users",
+		Help: "total number of users",
+	}, func() float64 {
+		users, err := GetUsers(newClient)
+		if err != nil {
+			log.Warn(err.Error())
+			return 0
+		}
+		totalUsers := 0.0
+		for _, _ = range users {
+			totalUsers++
+		}
+		return totalUsers
+	})
+
+	promauto.With(reg).NewCounterFunc(prometheus.CounterOpts{
+		Name: "number_of_books",
+		Help: "total number of books",
+	}, func() float64 {
+		items := []J.BaseItemKind{J.BaseItemKindBook}
+		books, err := GetItems(newClient, items)
+		if err != nil {
+			log.Warn(err.Error())
+			return 0
+		}
+		var totalNumberOfBooks = 0.0
+		for _, _ = range books {
+			totalNumberOfBooks = totalNumberOfBooks + 1
+		}
+		return totalNumberOfBooks
+
+	})
+	promauto.With(reg).NewCounterFunc(prometheus.CounterOpts{
+		Name: "number_of_books_hours",
+		Help: "total number of book hours",
+	}, func() float64 {
+		items := []J.BaseItemKind{J.BaseItemKindBook}
+		books, err := GetItems(newClient, items)
+		if err != nil {
+			log.Warn(err.Error())
+			return 0
+		}
+		var hours = 0.0
+		for _, book := range books {
+			hours = hours + runtime(book).Hours()
+		}
+		return hours
+	})
+	promauto.With(reg).NewCounterFunc(prometheus.CounterOpts{
+		Name: "number_of_audio_books",
+		Help: "number of audio books",
+	}, func() float64 {
+		items := []J.BaseItemKind{J.BaseItemKindAudioBook}
+		books, err := GetItems(newClient, items)
+		if err != nil {
+			log.Warn(err.Error())
+			return 0
+		}
+		var total = 0.0
+		for _, _ = range books {
+			total = total + 1
+		}
+		return total
+	})
+	promauto.With(reg).NewCounterFunc(prometheus.CounterOpts{
+		Name: "number_of_audio_books_hours",
+		Help: "total number of audio book hours",
+	}, func() float64 {
+		items := []J.BaseItemKind{J.BaseItemKindAudioBook}
+		books, err := GetItems(newClient, items)
+		if err != nil {
+			log.Warn(err.Error())
+			return 0
+		}
+		var hours = 0.0
+		for _, book := range books {
+			hours = hours + runtime(book).Hours()
+		}
+		return hours
 	})
 
 	go func() {
